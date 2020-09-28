@@ -27,13 +27,9 @@ void readDir(char * path, char * fileName)
   //char buf[512], *p;
   struct stat st;
   struct dirent di;
-  char fullPath[512]; // TODO remove after test
-  strcpy(fullPath,path);
-  strcpy(fullPath +strlen(path),fileName);
-  fullPath[strlen(path)+strlen(fileName)] = '\0';
 
-  if ((fd = open(path,0)) < 1){
-    fprintf(2,"Find: Cannot open file: %s\n", path);
+  if ((fd = open(path,0)) < 0){
+    //fprintf(2,"Find: Cannot open file: %s, strlen: %d\n", path,strlen(path));
     return;
   }
 
@@ -50,29 +46,26 @@ void readDir(char * path, char * fileName)
     // check some error of file length..
 
     while(read(fd,&di,sizeof(di)) == sizeof(di)){
-      if (strcmp(fileName,di.name) == 0){
-      printf("%s%s\n",path,di.name);
-      }
+      if (strcmp(fileName,di.name) == 0)
+	printf("%s%s\n",path,di.name);
       
       if (strcmp(di.name,".") != 0 && strcmp(di.name,"..") != 0 && strlen(di.name) != 0)
       {
 	// concat path with fileName in di.name
         char * newPath;
-	newPath = malloc(strlen(path)+strlen(di.name)+2);
+	newPath = (char*)malloc((strlen(path)+strlen(di.name)+2) * sizeof(char));
 	strcpy(newPath, path);
 	strcpy(newPath + strlen(path),di.name);
 	newPath[strlen(path)+strlen(di.name)] = '/';
 	newPath[strlen(path)+strlen(di.name)+1] = '\0';
-	printf("Find: newpath: %s\n",newPath);
+	//printf("Find: newpath: %s\n",newPath);
 
         readDir(newPath,fileName);
-      }else{
-	printf("Well, that aint right\n");
-      }
-    }
-  } else{
-    printf("Find: Opened smthing else\n");
+	free(newPath);
+	}
+    } 
   }
+  close(fd);
 }
 
 int
@@ -80,17 +73,17 @@ main(int argc, char *argv[])
 {
   char * path = "./";
 
-  if (argc < 2){
+  if (argc < 2 || argc > 3 ){
     printf("Wrong num of params, expected [path, filename]\n");
+  } else{
+    if (argc == 3 ){ // is custom directory
+      if (strcmp(argv[1],".") != 0){
+	memset(path,'\0',sizeof(argv[1]));
+	strcpy(path,argv[1]);
+	readDir(path,argv[2]);
+      }
+    }
+    readDir(path,argv[1]);
   }
-    
-  if (argc == 3 ){
-    // is custom directory
-    memset(path,'\0',sizeof(argv[1]));
-    strcpy(path,argv[1]);
-  }
-
-  // printf("%s\n",path);
-  readDir(path,argv[2]);
   exit(0);
 }
