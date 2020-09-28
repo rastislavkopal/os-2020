@@ -80,10 +80,22 @@ main(int argc, char *argv[])
       if (strcmp(argv[1],".") != 0){
 	memset(path,'\0',sizeof(argv[1]));
 	strcpy(path,argv[1]);
+	//readDir(path,argv[2]);
+	if (path[strlen(path)-1] != '/'){ // last char should be /
+	  char * newPath;
+	  newPath = (char*)malloc((strlen(path)+2) * sizeof(char));
+	  strcpy(newPath, path);
+	  newPath[strlen(path)] = '/';
+	  newPath[strlen(path)+1] = '\0';
+	  readDir(newPath,argv[2]);
+	  exit(0);
+	}
+      }else {
 	readDir(path,argv[2]);
+	exit(0);
       }
-    }
-    readDir(path,argv[1]);
+    } else
+      readDir(path,argv[1]);
   }
   exit(0);
 }
