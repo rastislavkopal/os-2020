@@ -3,99 +3,124 @@
 #include "user/user.h"
 #include "kernel/fs.h"
 
-char *
-fmtname(char * path)
+int match(char*, char*);
+
+void
+find(char *dir, char *para)
 {
-  static char buf[DIRSIZ+1];
-  char *p;
+    char buf[512], *p;
+    int fd;
 
-  for(p =path+strlen(path); p>= path && *p != '/';p--)
-    ;
-  p++;
+    struct dirent de;
 
-  if (strlen(p) >= DIRSIZ)
-    return p;
-  memmove(buf, p, strlen(p));
-  memset(buf+strlen(p), ' ', DIRSIZ-strlen(p));
-  return buf;
-}
+    struct stat st;
 
-void readDir(char * path, char * fileName)
-{
-  
-  int fd;
-  //char buf[512], *p;
-  struct stat st;
-  struct dirent di;
+    //printf("dir: %s\n", dir);
 
-  if ((fd = open(path,0)) < 0){
-    //fprintf(2,"Find: Cannot open file: %s, strlen: %d\n", path,strlen(path));
-    return;
-  }
+    if((fd = open(dir, 0)) < 0){
+        fprintf(2, "find: cannot open %s\n", dir);
+        return;
+    }
 
-  if (fstat(fd,&st) != 0){
-    fprintf(2,"Find: Cannot fstat\n");
-    close(fd);
-    return;
-  }
+    if(fstat(fd, &st) < 0){
+        fprintf(2, "find: cannot stat %s\n", dir);
+        close(fd);
+        return;
+    }
 
-  if (st.type == T_FILE){
-    if (strcmp(fmtname(path),fileName)==0)
-      printf("fileName\n");
-  } else if (st.type == T_DIR){
-    // check some error of file length..
+    switch(st.type){
+    case T_FILE:
+        fprintf(2, "find: %s is a file, not directory\n", dir);
+        break;
+    case T_DIR:
+        if(strlen(dir) + 1 + DIRSIZ + 1 > sizeof(buf)){
+            fprintf(2, "find: path too long\n");
+            break;
+        }
+        strcpy(buf, dir);
 
-    while(read(fd,&di,sizeof(di)) == sizeof(di)){
-      if (strcmp(fileName,di.name) == 0)
-	printf("%s%s\n",path,di.name);
-      
-      if (strcmp(di.name,".") != 0 && strcmp(di.name,"..") != 0 && strlen(di.name) != 0)
-      {
-	// concat path with fileName in di.name
-        char * newPath;
-	newPath = (char*)malloc((strlen(path)+strlen(di.name)+2) * sizeof(char));
-	strcpy(newPath, path);
-	strcpy(newPath + strlen(path),di.name);
-	newPath[strlen(path)+strlen(di.name)] = '/';
-	newPath[strlen(path)+strlen(di.name)+1] = '\0';
-	//printf("Find: newpath: %s\n",newPath);
+        //printf("buf: %s\n", buf);
 
-        readDir(newPath,fileName);
-	free(newPath);
-	}
-    } 
-  }
-  close(fd);
+        p = buf + strlen(buf);
+        *p++ = '/';
+        while(read(fd, &de, sizeof(de))){
+            //printf("de.name: %s %d\n", de.name, strcmp(de.name, "."));
+            if(de.inum == 0)
+                continue;
+            memmove(p, de.name, DIRSIZ);
+            p[DIRSIZ] = 0;
+            if(stat(buf, &st) < 0){
+                fprintf(2, "find: cannot stat %s\n", buf);
+                continue;
+            }
+            switch(st.type){
+            case T_FILE:
+                if(match(para, de.name)){
+                    printf("%s\n", buf);
+                }
+                break;
+            case T_DIR:
+                if(strcmp(de.name, ".") && strcmp(de.name, "..") ) find(buf, para);
+                break;
+            }
+        }
+        break;
+    }
 }
 
 int
 main(int argc, char *argv[])
 {
-  char * path = "./";
-
-  if (argc < 2 || argc > 3 ){
-    printf("Wrong num of params, expected [path, filename]\n");
-  } else{
-    if (argc == 3 ){ // is custom directory
-      if (strcmp(argv[1],".") != 0){
-	memset(path,'\0',sizeof(argv[1]));
-	strcpy(path,argv[1]);
-	//readDir(path,argv[2]);
-	if (path[strlen(path)-1] != '/'){ // last char should be /
-	  char * newPath;
-	  newPath = (char*)malloc((strlen(path)+2) * sizeof(char));
-	  strcpy(newPath, path);
-	  newPath[strlen(path)] = '/';
-	  newPath[strlen(path)+1] = '\0';
-	  readDir(newPath,argv[2]);
-	  exit(0);
-	}
-      }else {
-	readDir(path,argv[2]);
-	exit(0);
-      }
-    } else
-      readDir(path,argv[1]);
-  }
-  exit(0);
+    // printf("%d\n", argc);
+    if(argc == 2){
+        find(".", argv[1]);
+    } else if(argc == 3){
+        find(argv[1], argv[2]);
+    } else {
+        printf("find: argument error\n");
+    }
+    exit(0);
 }
+
+// Regexp matcher from Kernighan & Pike,
+// The Practice of Programming, Chapter 9.
+
+int matchhere(char*, char*);
+int matchstar(int, char*, char*);
+
+int
+match(char *re, char *text)
+{
+  if(re[0] == '^')
+    return matchhere(re+1, text);
+  do{  // must look at empty string
+    if(matchhere(re, text))
+      return 1;
+  }while(*text++ != '\0');
+  return 0;
+}
+
+// matchhere: search for re at beginning of text
+int matchhere(char *re, char *text)
+{
+  if(re[0] == '\0')
+    return 1;
+  if(re[1] == '*')
+    return matchstar(re[0], re+2, text);
+  if(re[0] == '$' && re[1] == '\0')
+    return *text == '\0';
+  if(*text!='\0' && (re[0]=='.' || re[0]==*text))
+    return matchhere(re+1, text+1);
+  return 0;
+}
+
+// matchstar: search for c*re at beginning of text
+int matchstar(int c, char *re, char *text)
+{
+  do{  // a * matches zero or more instances
+    if(matchhere(re, text))
+      return 1;
+  }while(*text!='\0' && (*text++==c || c=='.'));
+  return 0;
+}
+
