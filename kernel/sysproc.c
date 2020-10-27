@@ -49,7 +49,10 @@ sys_sbrk(void)
   addr = myproc()->sz;
  // if(growproc(n) < 0)
  //   return -1;
-  myproc()->sz += n;
+  if (n > 0)
+    myproc()->sz += n;
+  else
+    growproc(n);
   return addr;
 }
 

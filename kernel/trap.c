@@ -65,18 +65,24 @@ usertrap(void)
     intr_on();
 
     syscall();
-  } else if (r_scause() == 13 || r_scause() == 15){ // page fault
+  } else if (r_scause() == 15 || r_scause() == 13){ // page fault -> allocate page
     uint64 va = r_stval();
     uint64 aligned = PGROUNDDOWN(va);
-    printf("Page fault %p\n",va);
     uint64 mem = (uint64) kalloc();
+    if (va >= p->sz){ // accessed higher mem then its allocated size
+      printf("Access memory out of range\n");
+      p->killed = 1;
+      goto done;
+    }
     if (mem == 0){
       p->killed = 1;
+      goto done;
     } else {
       memset((void*)mem,0,PGSIZE);
       if (mappages(p->pagetable,aligned, PGSIZE, (uint64)mem, PTE_W|PTE_X|PTE_R|PTE_U) != 0){
 	kfree((void*)mem);
 	p->killed = 1;
+	goto done;
       }
     }
   }else if((which_dev = devintr()) != 0){
@@ -86,7 +92,7 @@ usertrap(void)
     printf("            sepc=%p stval=%p\n", r_sepc(), r_stval());
     p->killed = 1;
   }
-
+done:
   if(p->killed)
     exit(-1);
 
