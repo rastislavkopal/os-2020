@@ -113,6 +113,7 @@ walkaddr(pagetable_t pagetable, uint64 va)
 
 // add a mapping to the kernel page table.
 // only used when booting.
+ //   continue;
 // does not flush TLB or enable paging.
 void
 kvmmap(uint64 va, uint64 pa, uint64 sz, int perm)
@@ -183,7 +184,8 @@ uvmunmap(pagetable_t pagetable, uint64 va, uint64 npages, int do_free)
     if((pte = walk(pagetable, a, 0)) == 0)
       panic("uvmunmap: walk");
     if((*pte & PTE_V) == 0)
-      panic("uvmunmap: not mapped");
+     // panic("uvmunmap: not mapped");
+     continue;
     if(PTE_FLAGS(*pte) == PTE_V)
       panic("uvmunmap: not a leaf");
     if(do_free){

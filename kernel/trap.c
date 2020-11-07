@@ -70,12 +70,14 @@ usertrap(void)
     uint64 aligned = PGROUNDDOWN(va);
     uint64 mem = (uint64) kalloc();
     
-    if (va > p->sz){
-      p->killed = 1; // out of range
+    if (va >= p->sz){
+      p->killed = 1; // out of rangem
+      printf("Usetrap: out of range va\n");
       goto done;
     }
     
     if (mem == 0){
+      printf("Usertrap: couldnt allocate mem\n");
       p-> killed = 1;
       goto done;
     }else{
