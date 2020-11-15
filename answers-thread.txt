@@ -1,0 +1,1 @@
+Nastava konkurentny insert do hash table a konkurentne vlanka vymienaju pole a teda mozu stratit table->next
