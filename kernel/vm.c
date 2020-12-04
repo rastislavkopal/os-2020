@@ -5,7 +5,6 @@
 #include "riscv.h"
 #include "defs.h"
 #include "fs.h"
-
 /*
  * the kernel's page table.
  */
@@ -14,6 +13,8 @@ pagetable_t kernel_pagetable;
 extern char etext[];  // kernel.ld sets this to end of kernel code.
 
 extern char trampoline[]; // trampoline.S
+
+
 
 /*
  * create a direct-map page table for the kernel.
@@ -167,6 +168,45 @@ mappages(pagetable_t pagetable, uint64 va, uint64 size, uint64 pa, int perm)
   return 0;
 }
 
+int
+uvm_cow(pagetable_t pt, uint64 fault_addr)
+{
+  pte_t *pte;
+
+  if(fault_addr >= MAXVA)
+    return -1;
+
+  if((pte = walk(pt, PGROUNDDOWN(fault_addr), 0)) == 0)
+    return -1;
+  if((*pte & PTE_V) == 0)
+    return -1;
+  if((*pte & PTE_COW) == 0)
+    return 0;
+
+  char *mem;
+  uint64 pa, flags;
+
+  if((mem = kalloc()) == 0)
+    return -1;
+  pa = PTE2PA(*pte);
+  memmove(mem, (char*)pa, PGSIZE);
+  kfree((void*)pa);
+  *pte |= PTE_W;
+  *pte ^= PTE_COW;
+
+  flags = PTE_FLAGS(*pte);
+
+  *pte = PA2PTE(mem) | flags;
+  /*uvmunmap(pt,PGROUNDDOWN(fault_addr), PGSIZE, 0);
+  if (mappages(pt, PGROUNDDOWN(fault_addr), PGSIZE, (uint64)mem, flags) != 0){
+    printf("uvmcow: mappages\n");
+    kfree(mem);
+    return -1;
+  }*/
+
+  return 0;
+}
+
 // Remove npages of mappings starting from va. va must be
 // page-aligned. The mappings must exist.
 // Optionally free the physical memory.
@@ -311,7 +351,7 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
   pte_t *pte;
   uint64 pa, i;
   uint flags;
-  char *mem;
+  //char *mem;
 
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walk(old, i, 0)) == 0)
@@ -319,12 +359,17 @@ uvmcopy(pagetable_t old, pagetable_t new, uint64 sz)
     if((*pte & PTE_V) == 0)
       panic("uvmcopy: page not present");
     pa = PTE2PA(*pte);
+    if (*pte & PTE_W){
+      *pte ^= PTE_W;
+      *pte |= PTE_COW;
+    }
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto err;
-    memmove(mem, (char*)pa, PGSIZE);
-    if(mappages(new, i, PGSIZE, (uint64)mem, flags) != 0){
-      kfree(mem);
+    //if((mem = kalloc()) == 0)
+    //  goto err;
+    //memmove(mem, (char*)pa, PGSIZE);
+    inc_ref(pa);
+    if(mappages(new, i, PGSIZE, pa, flags) != 0){
+      //kfree(mem);
       goto err;
     }
   }
@@ -355,9 +400,22 @@ int
 copyout(pagetable_t pagetable, uint64 dstva, char *src, uint64 len)
 {
   uint64 n, va0, pa0;
+  //pte_t * pte;
 
   while(len > 0){
     va0 = PGROUNDDOWN(dstva);
+    if (va0 >= MAXVA)
+      return -1;
+    /*pte = walk(pagetable, va0,0);
+    if (*pte == 0)
+      return -1;
+    if (*pte & PTE_COW){
+      if (uvm_cow(pagetable,va0) < 0)
+	panic("Copyout: uvm_cow err");
+    }*/
+    if (uvm_cow(pagetable,va0) == -1)
+      return -1;
+
     pa0 = walkaddr(pagetable, va0);
     if(pa0 == 0)
       return -1;

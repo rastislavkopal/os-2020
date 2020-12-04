@@ -21,13 +21,52 @@ struct run {
 struct {
   struct spinlock lock;
   struct run *freelist;
+  uint64 * cntref;
 } kmem;
 
+uint64
+dec_ref(uint64 pa)
+{
+  acquire(&kmem.lock);
+  if (kmem.cntref[PA2IND(pa)] == 0)
+    panic("Dec_ref: cntref zero\n");
+  kmem.cntref[PA2IND(pa)]--;
+  uint64 ret = kmem.cntref[PA2IND(pa)];
+  release(&kmem.lock);
+
+  return ret;
+}
+
+
+void
+inc_ref(uint64 pa)
+{
+  acquire(&kmem.lock);
+  kmem.cntref[PA2IND(pa)]++;
+  release(&kmem.lock);
+  // TODO checkni pretecenie maxima :) 
+  // tou je max hodnota uint64
+}
+
+static void 
+inc_ref_internal(void * pa)
+{
+  kmem.cntref[PA2IND(pa)]++;
+}
 void
 kinit()
 {
+  int frames = 0;
+  uint64 addr = PGROUNDUP((uint64)end);
+  kmem.cntref = (uint64*)addr;
+  while (addr < PHYSTOP){
+    kmem.cntref[PA2IND(addr)] = 1;
+    addr += PGSIZE;
+    frames++;
+  }
+
   initlock(&kmem.lock, "kmem");
-  freerange(end, (void*)PHYSTOP);
+  freerange(kmem.cntref+frames, (void*)PHYSTOP);
 }
 
 void
@@ -51,6 +90,9 @@ kfree(void *pa)
   if(((uint64)pa % PGSIZE) != 0 || (char*)pa < end || (uint64)pa >= PHYSTOP)
     panic("kfree");
 
+  if (dec_ref((uint64)pa) != 0)
+    return;
+
   // Fill with junk to catch dangling refs.
   memset(pa, 1, PGSIZE);
 
@@ -72,8 +114,10 @@ kalloc(void)
 
   acquire(&kmem.lock);
   r = kmem.freelist;
-  if(r)
+  if(r){
     kmem.freelist = r->next;
+    inc_ref_internal((void*)r);
+  }
   release(&kmem.lock);
 
   if(r)
