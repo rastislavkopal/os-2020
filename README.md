@@ -14,8 +14,8 @@ provides pointers to on-line resources for v6.<br>
 </i></p>
 
 <h3>Labs</h3><hr>
-<a href="https://github.com/rastislavkopal/os-2020/tree/cow">Lab 6: COW</a><br>
-<a href="https://github.com/rastislavkopal/os-2020/tree/thread">Lab 7: Threads</a><br>
-<a href="https://github.com/rastislavkopal/os-2020/tree/lock">Lab 8: Locks</a><br>
-<a href="https://github.com/rastislavkopal/os-2020/tree/fs">Lab 9: fs</a><br>
+<a href="https://github.com/rastislavkopal/os-2020/compare/cow">Lab 6: COW</a><br>
+<a href="https://github.com/rastislavkopal/os-2020/compare/thread">Lab 7: Threads</a><br>
+<a href="https://github.com/rastislavkopal/os-2020/compare/lock">Lab 8: Locks</a><br>
+<a href="https://github.com/rastislavkopal/os-2020/compare/fs">Lab 9: fs</a><br>
 <a href="#">Lab 10: mmap TODO</a><br>
