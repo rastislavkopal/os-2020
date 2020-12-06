@@ -24,4 +24,4 @@ provides pointers to on-line resources for v6.<br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/thread">Lab 7: Threads</a><br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/lock">Lab 8: Locks</a><br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/fs">Lab 9: fs</a><br>
-<a href="#">Lab 10: mmap TODO</a><br>
+<a href="#">Lab 10: mmap </a><b>TODO</b><br> 
