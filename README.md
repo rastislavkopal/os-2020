@@ -1,7 +1,8 @@
 # os-2020
+Zadania z predmetu Operačné systémy - ZS 2020 FEI STU.
 
 <p><i>
-v6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix<br>
+xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix<br>
 Version 6 (v6).  xv6 loosely follows the structure and style of v6,<br>
 but is implemented for a modern RISC-V multiprocessor using ANSI C.<br>
 <br><br>
