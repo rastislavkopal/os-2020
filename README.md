@@ -15,6 +15,11 @@ provides pointers to on-line resources for v6.<br>
 </i></p>
 
 <h3>Labs</h3><hr>
+<a href="https://github.com/rastislavkopal/os-2020/compare/util">Lab 1: utils</a><br>
+<a href="https://github.com/rastislavkopal/os-2020/compare/syscall">Lab 2: syscalls</a><br>
+<a href="https://github.com/rastislavkopal/os-2020/compare/pgtbl">Lab 3: pagetables</a><br>
+<a href="https://github.com/rastislavkopal/os-2020/compare/traps">Lab 4: traps</a><br>
+<a href="https://github.com/rastislavkopal/os-2020/compare/lazy">Lab 5: lazy</a><br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/cow">Lab 6: COW</a><br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/thread">Lab 7: Threads</a><br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/lock">Lab 8: Locks</a><br>
