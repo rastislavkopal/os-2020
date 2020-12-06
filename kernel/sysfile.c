@@ -316,11 +316,31 @@ sys_open(void)
     }
   }
 
+  // symlink 
+  int i=10;
+  while (i-- && ip->type == T_SYMLINK && (omode & O_NOFOLLOW) == 0){ // 'recursively' open content of files
+    if(readi(ip, 0, (uint64)&path,0,ip->size) != ip->size)
+      panic("open: syslink read\n");
+    iunlockput(ip);
+    if((ip = namei(path)) == 0){
+      end_op(); // target doesnt exists -> panic
+      return -1;
+    }
+    ilock(ip);
+  }
+  if (ip->type == T_SYMLINK && (omode & O_NOFOLLOW) ==0){
+    iunlockput(ip);
+    end_op();
+    return -1;
+  }
+
   if(ip->type == T_DEVICE && (ip->major < 0 || ip->major >= NDEV)){
     iunlockput(ip);
     end_op();
     return -1;
   }
+
+
 
   if((f = filealloc()) == 0 || (fd = fdalloc(f)) < 0){
     if(f)
@@ -482,5 +502,38 @@ sys_pipe(void)
     fileclose(wf);
     return -1;
   }
+  return 0;
+}
+
+int len(char * str)
+{
+  int ret=0;
+  for ( ;ret < MAXPATH && str[ret] !=0; ret++);
+  return ret;
+}
+
+uint64
+sys_symlink(void)
+{
+  char target[MAXPATH], path[MAXPATH];
+  struct inode * newip;
+
+  if(argstr(0,target, MAXPATH) < 0 || argstr(1, target, MAXPATH) < 0)
+    return -1;
+  
+  begin_op();
+
+  newip = create(path, T_SYMLINK, 0, 0); // create symlink file 
+  if(newip == 0){
+     end_op();
+     return -1;
+  }
+
+ // ilock(newip);
+  if(writei(newip, 0, (uint64)&target,0 ,len(target)) != len(target)){
+    panic("sys_symlink: write\n");
+  }
+  iunlockput(newip);
+  end_op();
   return 0;
 }
