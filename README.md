@@ -1,5 +1,5 @@
 # os-2020
-Zadania z predmetu Operačné systémy - ZS 2020 FEI STU.
+<i>Zadania z predmetu Operačné systémy - ZS 2020 FEI STU.</i>
 
 <p><i>
 xv6 is a re-implementation of Dennis Ritchie's and Ken Thompson's Unix<br>
