@@ -134,6 +134,9 @@ found:
   p->context.ra = (uint64)forkret;
   p->context.sp = p->kstack + PGSIZE;
 
+  p->vma_list.next = &p->vma_list;
+  p->vma_list.prev = &p->vma_list;
+
   return p;
 }
 

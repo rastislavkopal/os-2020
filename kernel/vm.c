@@ -6,6 +6,16 @@
 #include "defs.h"
 #include "fs.h"
 
+#include "spinlock.h"
+#include "vm.h"
+#include "proc.h"
+
+#define NVMA 16
+
+struct mmap_vma vma[NVMA];
+struct mmap_vma * vma_freelist;
+struct spinlock vma_lock;
+
 /*
  * the kernel's page table.
  */
@@ -47,6 +57,40 @@ kvmmake(void)
   proc_mapstacks(kpgtbl);
   
   return kpgtbl;
+}
+
+void
+vmainit(void)
+{
+  initlock(&vma_lock,"vma");
+  for (int i=0; i < NVMA; i++){
+    acquire(&vma_lock);
+    vma[i].next = vma_freelist;
+    vma_freelist = &vma[i];
+    release(&vma_lock);
+  }
+}
+
+struct mmap_vma *
+get_vma(void){
+  struct mmap_vma * tmp;
+
+  acquire(&vma_lock);
+  tmp = vma_freelist;
+  if (tmp)
+    vma_freelist = tmp->next;
+  release(&vma_lock);
+
+  return tmp;
+}
+
+
+void
+put_vma(struct mmap_vma * v){
+  acquire(&vma_lock);
+  v->next = vma_freelist;
+  vma_freelist = v;
+  release(&vma_lock);
 }
 
 // Initialize the one kernel_pagetable
@@ -128,6 +172,53 @@ kvmmap(pagetable_t kpgtbl, uint64 va, uint64 pa, uint64 sz, int perm)
 {
   if(mappages(kpgtbl, va, sz, pa, perm) != 0)
     panic("kvmmap");
+}
+
+// go trough proccess memory and find min free mem
+uint64
+vma_min_addr(struct proc * p)
+{
+  struct mmap_vma *vma;
+  uint64 min_addr = TRAPFRAME; // start at top of possible addresses, but under trampoline and trapframe
+  for (vma = p->vma_list.next; vma != &p->vma_list; vma = vma->next){
+    if (min_addr > vma->addr)
+      min_addr = vma->addr;
+  }
+  return min_addr;
+}
+
+// maps file into current process's memory
+// return -1 on error
+// allocating lazy -> not here
+// 1) find region
+// 2) alloc and fill vma
+// 3) filedup
+uint64
+vma_map(struct proc * p, struct file *f, int length, int prot, int flags)
+{
+  // TODO check permissions for file -> if file is read_only -> cannot be map_shared
+  uint64 min_addr = vma_min_addr(p);
+  min_addr = PGROUNDDOWN(min_addr - length);
+  if (p->sz > min_addr)
+    return -1; // not enough memory
+  struct mmap_vma * vma = get_vma();
+  if (vma == 0)
+    return -1;
+
+  vma->addr = min_addr;
+  vma->len = length;
+  vma->prot = prot;
+  vma->flags = flags;
+  vma->file = f;
+  // save created file
+  vma->next = p->vma_list.next;
+  vma->prev = &p->vma_list;
+  p->vma_list.next->prev = vma;
+  p->vma_list.next = vma;
+  p->vmastart-= length;
+
+  filedup(f); // increase file refcnt
+  return min_addr;
 }
 
 // Create PTEs for virtual addresses starting at va that refer to

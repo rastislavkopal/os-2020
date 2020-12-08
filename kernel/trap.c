@@ -6,10 +6,18 @@
 #include "proc.h"
 #include "defs.h"
 
+#include "sleeplock.h"
+#include "fs.h"
+#include "file.h"
+#include "fcntl.h"
+#include "vm.h"
+
 struct spinlock tickslock;
 uint ticks;
 
 extern char trampoline[], uservec[], userret[];
+
+int mmap_fault();
 
 // in kernelvec.S, calls kerneltrap().
 void kernelvec();
@@ -27,6 +35,44 @@ void
 trapinithart(void)
 {
   w_stvec((uint64)kernelvec);
+}
+
+int
+mmap_fault()
+{
+  struct proc * p = myproc();
+  struct mmap_vma * vma;
+  uint64 fault_addr = r_stval();
+  int flag = 1;
+  char * mem;
+
+  for (vma = &p->vma_list; vma < &p->vma_list+NVMA; ++vma)
+    if (fault_addr >= vma->addr && fault_addr < vma->addr+ vma->len){
+      flag = 0;
+      break;
+    }
+
+  if (flag != 0)
+    return -1;
+  // check permissions
+  if ((r_scause() == 13  && (vma->prot & PROT_READ) == 0)|| (r_scause() == 15 && (vma->prot & PROT_WRITE) == 0))
+    return -1;
+
+  mem = kalloc();
+  if (!mem)
+    return -2;  
+  memset(mem, 0, PGSIZE);
+  if (mappages(p->pagetable, fault_addr, PGSIZE, (uint64)mem, (vma->prot << 1 | PTE_U)) != 0){
+    kfree(mem);
+    return -3;
+  }
+
+  ilock(vma->file->ip);
+  if (readi(vma->file->ip, 0, (uint64)mem, fault_addr - vma->addr, PGSIZE) == 0)
+    return -1;
+  iunlock(vma->file->ip);
+
+  return 0;
 }
 
 //
@@ -65,6 +111,8 @@ usertrap(void)
     intr_on();
 
     syscall();
+  } else if (r_scause() == 13 || r_scause() == 15){
+    mmap_fault() ;
   } else if((which_dev = devintr()) != 0){
     // ok
   } else {
