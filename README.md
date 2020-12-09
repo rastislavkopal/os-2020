@@ -22,6 +22,7 @@ provides pointers to on-line resources for v6.<br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/lazy">Lab 5: lazy</a><br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/cow">Lab 6: COW</a><br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/thread">Lab 7: Threads</a><br>
-<a href="https://github.com/rastislavkopal/os-2020/compare/lock">Lab 8: Locks</a><br>
+Lab 8: Locks<a href="https://github.com/rastislavkopal/os-2020/commit/6b16284f081b54219c664040741f80ee1f5e646b">kmem </a> && 
+            <a href="https://github.com/rastislavkopal/os-2020/commit/6e56bc4d9c82e34e1b1be1efecd556c30f3a80f6">bcache</a><br> 
 <a href="https://github.com/rastislavkopal/os-2020/commit/16c5185d9fb01fa60a31f918c3d012b1b7957a49">Lab 9: fs</a><br>
 <a href="https://github.com/rastislavkopal/os-2020/compare/mmap">Lab 10: mmap </a><br> 
